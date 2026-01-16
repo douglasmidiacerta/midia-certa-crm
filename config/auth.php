@@ -9,6 +9,7 @@ function user_id(){ $u=user(); return $u ? (int)$u['id'] : 0; }
 function user_role(){ $u=user(); return $u ? ($u['role'] ?? '') : ''; }
 
 function can_admin(): bool { return user_role()==='admin'; }
+function is_admin(): bool { return can_admin(); } // Alias para compatibilidade
 function can_finance(): bool { return in_array(user_role(), ['admin','financeiro'], true); }
 function can_sales(): bool { return in_array(user_role(), ['admin','vendas'], true); }
 

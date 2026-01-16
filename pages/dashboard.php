@@ -299,5 +299,23 @@ if ($isSales && !can_admin()) {
             <div class="col-md-3 mb-2">
                 <div class="p-2 bg-light rounded">
                     <div class="text-muted small">A receber vencido</div>
-                    <div style="font-weight:
-// ob_end_flush(); // COMENTADO TEMPORARIAMENTE
+                    <div style="font-weight: 900; font-size: 1.2rem; color: #ef4444;">R$ <?php echo number_format($alertas['receber_vencido'] ?? 0, 2, ',', '.'); ?></div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="p-2 bg-light rounded">
+                    <div class="text-muted small">A pagar vencido</div>
+                    <div style="font-weight: 900; font-size: 1.2rem; color: #ef4444;">R$ <?php echo number_format($alertas['pagar_vencido'] ?? 0, 2, ',', '.'); ?></div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="p-2 bg-light rounded">
+                    <div class="text-muted small">OS atrasadas</div>
+                    <div style="font-weight: 900; font-size: 1.2rem; color: #f59e0b;"><?php echo (int)($alertas['os_atrasadas'] ?? 0); ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php } ?>
+
+<?php require_once __DIR__ . '/../partials/layout_bottom.php'; ?>
