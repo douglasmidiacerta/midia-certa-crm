@@ -121,6 +121,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action==='save'){
         $photo_final,$doc_final,$id
       ]);
       $emp_id = $id;
+      flash_set('success','Funcionário atualizado com sucesso.');
 
       // criar usuário de acesso (opcional)
       if($create_user){

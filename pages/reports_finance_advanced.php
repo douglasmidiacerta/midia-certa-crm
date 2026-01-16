@@ -36,6 +36,7 @@ $fluxoCaixa = $pdo->prepare("
     a.id,
     a.name AS conta,
     a.type AS tipo,
+    a.initial_balance AS saldo_inicial,
     (
       SELECT COALESCE(SUM(amount), 0)
       FROM cash_movements cm
@@ -50,7 +51,7 @@ $fluxoCaixa = $pdo->prepare("
         AND cm.movement_type = 'saida'
         AND DATE(cm.created_at) <= ?
     ) AS total_saidas,
-    (
+    COALESCE(a.initial_balance, 0) + (
       SELECT COALESCE(SUM(amount), 0)
       FROM cash_movements cm
       WHERE cm.account_id = a.id

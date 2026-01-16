@@ -125,12 +125,23 @@ $saldoCaixa = 0;
 if ($isFinance) {
     $contasReceber = $pdo->query("SELECT COALESCE(SUM(amount), 0) as total FROM ar_titles WHERE status = 'aberto'")->fetch()['total'];
     $contasPagar = $pdo->query("SELECT COALESCE(SUM(amount), 0) as total FROM ap_titles WHERE status = 'aberto'")->fetch()['total'];
+    
+    // Calcular saldo em caixa = saldo inicial + entradas - saídas
     $saldoCaixa = $pdo->query("
-      SELECT COALESCE(
-        SUM(CASE WHEN movement_type='entrada' THEN amount ELSE 0 END) -
-        SUM(CASE WHEN movement_type='saida' THEN amount ELSE 0 END),
-      0) as total
-      FROM cash_movements
+      SELECT 
+        COALESCE(SUM(a.initial_balance), 0) +
+        COALESCE((
+          SELECT SUM(amount)
+          FROM cash_movements
+          WHERE movement_type = 'entrada'
+        ), 0) -
+        COALESCE((
+          SELECT SUM(amount)
+          FROM cash_movements
+          WHERE movement_type = 'saida'
+        ), 0) as total
+      FROM accounts a
+      WHERE a.active = 1
     ")->fetch()['total'];
 }
 
