@@ -1,5 +1,0 @@
-Deploy automático configurado com sucesso!
-Data: 16/01/2026
-Sistema: Mídia Certa CRM v3.8
-
-Este arquivo será enviado automaticamente para o servidor via GitHub Actions.
