@@ -1,0 +1,88 @@
+name: 🚀 Deploy para cPanel
+
+on:
+  push:
+    branches:
+      - main  # ou master, dependendo do seu branch principal
+      - production  # adicione outros branches se necessário
+  workflow_dispatch:  # Permite executar manualmente
+
+jobs:
+  deploy:
+    name: 📦 Deploy via FTP
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # Apenas o último commit para deploy mais rápido
+      
+      - name: 🔧 Setup PHP (para validação)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mysqli, pdo, pdo_mysql
+      
+      - name: ✅ Validar sintaxe PHP
+        run: |
+          echo "Validando arquivos PHP..."
+          find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
+          if [ $? -eq 0 ]; then
+            echo "✅ Todos os arquivos PHP estão válidos"
+          else
+            echo "❌ Erros de sintaxe encontrados!"
+            exit 1
+          fi
+      
+      - name: 🗂️ Preparar arquivos para deploy
+        run: |
+          echo "Removendo arquivos temporários..."
+          find . -name "tmp_rovodev_*" -delete
+          find . -name ".DS_Store" -delete
+          find . -name "Thumbs.db" -delete
+          find . -name "desktop.ini" -delete
+          echo "✅ Arquivos temporários removidos"
+      
+      - name: 📤 Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT || 21 }}  # Porta padrão FTP: 21, FTPS: 21 ou 990
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }}  # 'ftp' ou 'ftps'
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_SERVER_DIR || '/public_html/' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tmp_rovodev_*
+            **/.vscode/**
+            **/.idea/**
+            **/*.log
+            **/error_log
+            **/.DS_Store
+            **/Thumbs.db
+            **/desktop.ini
+            **/config/config.local.php
+            **/*.md
+            **/uploads/**
+            **/.github/**
+          dangerous-clean-slate: false  # NÃO apagar tudo antes (preserva uploads)
+      
+      - name: ✅ Deploy concluído
+        run: |
+          echo "🎉 Deploy realizado com sucesso!"
+          echo "📅 Data: $(date)"
+          echo "🔗 Acesse seu site para verificar"
+
+      - name: 📢 Notificar no Discord/Slack (Opcional)
+        if: success()
+        run: |
+          echo "Deploy concluído com sucesso!"
+          # Descomente e configure se quiser notificações:
+          # curl -X POST -H 'Content-type: application/json' \
+          # --data '{"text":"✅ Deploy realizado com sucesso no cPanel!"}' \
+          # ${{ secrets.WEBHOOK_URL }}

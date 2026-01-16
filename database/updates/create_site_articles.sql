@@ -1,0 +1,12 @@
+-- Cria tabela de artigos do site
+CREATE TABLE IF NOT EXISTS site_articles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  excerpt TEXT,
+  content LONGTEXT NOT NULL,
+  status ENUM('draft','published') DEFAULT 'published',
+  published_at DATE DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

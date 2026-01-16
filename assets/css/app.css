@@ -1,0 +1,5 @@
+
+body.bg{background:#f5f7fb;}
+.auth-card{max-width:420px;margin:10vh auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 12px 30px rgba(0,0,0,.08);}
+.auth-card input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:10px;margin-bottom:10px;}
+.btn.primary{background:#1b4dff;color:#fff;border:none;border-radius:10px;padding:10px 12px;width:100%;}

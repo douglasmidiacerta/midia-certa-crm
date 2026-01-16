@@ -1,0 +1,38 @@
+# Configuração local de desenvolvimento (não enviar para produção)
+config/config.local.php
+
+# Configurações de deploy (contém senhas)
+.deploy-config
+.deploy-config.json
+
+# Arquivos temporários
+tmp_rovodev_*
+
+# Uploads (arquivos dos usuários)
+uploads/*
+!uploads/.keep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+error_log
+
+# Cache PHP
+*.cache
+
+# Arquivos zip/backup
+*.zip
+*.rar
+*.tar.gz
+*.backup

@@ -1,0 +1,47 @@
+# Arquivos Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Configurações locais
+config/config.local.php
+
+# Arquivos temporários
+tmp_rovodev_*
+*.tmp
+*.cache
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+error_log
+
+# Documentação (opcional - remova se quiser enviar)
+*.md
+!README.md
+
+# Node modules (se usar)
+node_modules/
+
+# Uploads (já existem no servidor)
+uploads/*
+!uploads/.keep
+
+# Banco de dados
+database/
+
+# Scripts de desenvolvimento
+deploy.sh
+deploy.ps1
