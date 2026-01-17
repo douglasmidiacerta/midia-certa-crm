@@ -4,19 +4,19 @@ $id = (int)($_GET['id'] ?? 0);
 if(!$id){ flash_set('danger','O.S inválida'); redirect($base.'/app.php?page=os'); exit; }
 
 $st = $pdo->prepare("SELECT o.*,
-                            c.name client_name,
+                            COALESCE(c.name, '(Cliente não encontrado)') as client_name,
                             COALESCE(NULLIF(c.whatsapp,''), c.phone) client_phone,
                             c.address_street, c.address_number, c.address_neighborhood, c.address_city, c.address_state, c.address_complement,
-                            u.name seller_name
+                            COALESCE(u.name, '(Vendedor não encontrado)') as seller_name
                      FROM os o
-                     JOIN clients c ON c.id=o.client_id
-                     JOIN users u ON u.id=o.seller_user_id
+                     LEFT JOIN clients c ON c.id=o.client_id
+                     LEFT JOIN users u ON u.id=o.seller_user_id
                      WHERE o.id=?");
 $st->execute([$id]);
 $os = $st->fetch();
 if(!$os){ flash_set('danger','O.S não encontrada'); redirect($base.'/app.php?page=os'); exit; }
 
-$lines = $pdo->prepare("SELECT l.*, i.name item_name, i.type item_type FROM os_lines l JOIN items i ON i.id=l.item_id WHERE l.os_id=? ORDER BY l.id");
+$lines = $pdo->prepare("SELECT l.*, COALESCE(i.name, '(Item removido)') as item_name, i.type item_type FROM os_lines l LEFT JOIN items i ON i.id=l.item_id WHERE l.os_id=? ORDER BY l.id");
 $lines->execute([$id]);
 $lines = $lines->fetchAll();
 
