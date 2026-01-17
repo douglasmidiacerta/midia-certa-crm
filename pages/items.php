@@ -115,57 +115,67 @@ function upload_item_image($file, $required, $current_path = null) {
 }
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
-  $name = trim($_POST['name'] ?? '');
-  $type = $_POST['type'] ?? 'produto';
-  $format = trim($_POST['format'] ?? '');
-  $vias = trim($_POST['vias'] ?? '');
-  $colors = trim($_POST['colors'] ?? '');
-  $category_id = (int)($_POST['category_id'] ?? 0);
-  $category_new = trim($_POST['category_new'] ?? '');
-  $price = (float)str_replace(',','.',($_POST['price'] ?? '0'));
+  try {
+    $name = trim($_POST['name'] ?? '');
+    $type = $_POST['type'] ?? 'produto';
+    $format = trim($_POST['format'] ?? '');
+    $vias = trim($_POST['vias'] ?? '');
+    $colors = trim($_POST['colors'] ?? '');
+    $category_id = (int)($_POST['category_id'] ?? 0);
+    $category_new = trim($_POST['category_new'] ?? '');
+    $price = (float)str_replace(',','.',($_POST['price'] ?? '0'));
 
-  [$image_path, $image_error] = upload_item_image($_FILES['image'] ?? null, true);
-  if ($image_error) {
-    flash_set('danger', $image_error);
+    [$image_path, $image_error] = upload_item_image($_FILES['image'] ?? null, true);
+    if ($image_error) {
+      flash_set('danger', $image_error);
+      redirect($base.'/app.php?page=items');
+      exit;
+    }
+
+    if(!$category_id && $category_new){
+      $category_id = get_or_create_category($pdo, $category_new);
+    }
+
+    if(!$name || !$category_id){
+      flash_set('danger','Nome e categoria são obrigatórios.');
+      redirect($base.'/app.php?page=items');
+      exit;
+    }
+
+    // Verificar se é produto por m²
+    $is_sqm_product = isset($_POST['is_sqm_product']) ? 1 : 0;
+    $price_per_sqm = $is_sqm_product ? (float)str_replace(',','.',($_POST['price_per_sqm'] ?? '0')) : 0;
+    $min_sqm = $is_sqm_product ? (float)str_replace(',','.',($_POST['min_sqm'] ?? '0')) : 0;
+    
+    $st=$pdo->prepare("INSERT INTO items (name,format,vias,colors,type,category_id,image_path,cost,price,is_sqm_product,price_per_sqm,min_sqm,active,created_at) VALUES (?,?,?,?,?,?,?,0,?,?,?,?,1,NOW())");
+    $st->execute([$name,$format,$vias,$colors,$type,$category_id,$image_path,$price,$is_sqm_product,$price_per_sqm,$min_sqm]);
+    $item_id = (int)$pdo->lastInsertId();
+
+    // custo por fornecedor (opcional)
+    $sup_ids = $_POST['supplier_id'] ?? [];
+    $sup_costs = $_POST['supplier_cost'] ?? [];
+    $sup_notes = $_POST['supplier_notes'] ?? [];
+
+    for($i=0; $i<count($sup_ids); $i++){
+      $sid = (int)$sup_ids[$i];
+      $cost = (float)str_replace(',','.',($sup_costs[$i] ?? '0'));
+      $note = trim($sup_notes[$i] ?? '');
+      if(!$sid) continue;
+      $st2 = $pdo->prepare("INSERT INTO item_supplier_costs (item_id,supplier_id,cost,notes,active,created_at)
+                             VALUES (?,?,?,?,1,NOW())
+                             ON DUPLICATE KEY UPDATE cost=VALUES(cost), notes=VALUES(notes), active=1");
+      $st2->execute([$item_id,$sid,$cost,$note]);
+    }
+
+    flash_set('success','Produto/Serviço cadastrado.');
     redirect($base.'/app.php?page=items');
-  }
-
-  if(!$category_id && $category_new){
-    $category_id = get_or_create_category($pdo, $category_new);
-  }
-
-  if(!$name || !$category_id){
-    flash_set('danger','Nome e categoria são obrigatórios.');
+    exit;
+  } catch (Exception $e) {
+    error_log('Erro ao criar produto: ' . $e->getMessage());
+    flash_set('danger', 'Erro ao cadastrar produto: ' . $e->getMessage());
     redirect($base.'/app.php?page=items');
+    exit;
   }
-
-  // Verificar se é produto por m²
-  $is_sqm_product = isset($_POST['is_sqm_product']) ? 1 : 0;
-  $price_per_sqm = $is_sqm_product ? (float)str_replace(',','.',($_POST['price_per_sqm'] ?? '0')) : 0;
-  $min_sqm = $is_sqm_product ? (float)str_replace(',','.',($_POST['min_sqm'] ?? '0')) : 0;
-  
-  $st=$pdo->prepare("INSERT INTO items (name,format,vias,colors,type,category_id,image_path,cost,price,is_sqm_product,price_per_sqm,min_sqm,active,created_at) VALUES (?,?,?,?,?,?,?,0,?,?,?,?,1,NOW())");
-  $st->execute([$name,$format,$vias,$colors,$type,$category_id,$image_path,$price,$is_sqm_product,$price_per_sqm,$min_sqm]);
-  $item_id = (int)$pdo->lastInsertId();
-
-  // custo por fornecedor (opcional)
-  $sup_ids = $_POST['supplier_id'] ?? [];
-  $sup_costs = $_POST['supplier_cost'] ?? [];
-  $sup_notes = $_POST['supplier_notes'] ?? [];
-
-  for($i=0; $i<count($sup_ids); $i++){
-    $sid = (int)$sup_ids[$i];
-    $cost = (float)str_replace(',','.',($sup_costs[$i] ?? '0'));
-    $note = trim($sup_notes[$i] ?? '');
-    if(!$sid) continue;
-    $st2 = $pdo->prepare("INSERT INTO item_supplier_costs (item_id,supplier_id,cost,notes,active,created_at)
-                           VALUES (?,?,?,?,1,NOW())
-                           ON DUPLICATE KEY UPDATE cost=VALUES(cost), notes=VALUES(notes), active=1");
-    $st2->execute([$item_id,$sid,$cost,$note]);
-  }
-
-  flash_set('success','Produto/Serviço cadastrado.');
-  redirect($base.'/app.php?page=items');
 }
 
 // Filtros
