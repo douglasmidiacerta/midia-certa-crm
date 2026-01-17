@@ -1,7 +1,7 @@
 <?php
 require_login();
 $id = (int)($_GET['id'] ?? 0);
-if(!$id){ flash_set('danger','O.S inválida'); redirect($base.'/app.php?page=os'); }
+if(!$id){ flash_set('danger','O.S inválida'); redirect($base.'/app.php?page=os'); exit; }
 
 $st = $pdo->prepare("SELECT o.*,
                             c.name client_name,
@@ -14,7 +14,7 @@ $st = $pdo->prepare("SELECT o.*,
                      WHERE o.id=?");
 $st->execute([$id]);
 $os = $st->fetch();
-if(!$os){ flash_set('danger','O.S não encontrada'); redirect($base.'/app.php?page=os'); }
+if(!$os){ flash_set('danger','O.S não encontrada'); redirect($base.'/app.php?page=os'); exit; }
 
 $lines = $pdo->prepare("SELECT l.*, i.name item_name, i.type item_type FROM os_lines l JOIN items i ON i.id=l.item_id WHERE l.os_id=? ORDER BY l.id");
 $lines->execute([$id]);
@@ -30,7 +30,7 @@ $files = $pdo->prepare("SELECT f.* FROM os_files f WHERE f.os_id=? ORDER BY f.id
 if(user_role()==='vendas' && ($os['status'] ?? '')!=='atendimento' && ($os['status'] ?? '')!=='refugado'){
   if($_SERVER['REQUEST_METHOD']==='POST'){
     flash_set('danger','Esta O.S já foi enviada para o Financeiro e não pode mais ser alterada pelo vendedor.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 }
 $files->execute([$id]);
@@ -68,7 +68,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
 
     if(empty($_FILES['file']['name'])){
       flash_set('danger','Selecione um arquivo.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
     $uploadDir = __DIR__ . '/../uploads/os_'.$id;
@@ -86,7 +86,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
 
     if(!move_uploaded_file($tmp, $dest)){
       flash_set('danger','Falha ao enviar arquivo.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     $rel = 'uploads/os_'.$id.'/'.$fname;
 
@@ -98,7 +98,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
     audit($pdo,'upload','os_files',$file_id,['os_id'=>$id,'kind'=>$kind,'name'=>$orig]);
 
     flash_set('success','Arquivo anexado.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Ação: enviar para aprovação do cliente (gera token e link)
@@ -107,7 +107,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
     
     if(!has_arte($files)){
       flash_set('danger','Anexe a arte (PDF) antes de enviar para aprovação.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     
     try {
@@ -124,7 +124,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
       
     } catch(Exception $e){
       flash_set('danger','Erro ao gerar link: ' . $e->getMessage());
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
   }
 
@@ -133,7 +133,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
     require_role(['admin','vendas']);
     if(($os['doc_kind'] ?? 'sale')!=='budget'){
       flash_set('danger','Esta O.S já é uma venda.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     $pdo->beginTransaction();
     $pdo->prepare("UPDATE os SET doc_kind='sale' WHERE id=?")->execute([$id]);
@@ -143,7 +143,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
     $pdo->commit();
     audit($pdo,'convert','os',$id,['from'=>'budget','to'=>'sale']);
     flash_set('success','Orçamento convertido em VENDA. Agora o financeiro passa a contar.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Criar venda (envia para o Financeiro / Análise de arquivo)
@@ -152,28 +152,28 @@ if($_SERVER['REQUEST_METHOD']==='POST' && $action){
     // Não faz sentido em orçamento: use "Converter"
     if(($os['doc_kind'] ?? 'sale')==='budget'){
       flash_set('danger','Esta O.S é um orçamento. Converta para VENDA primeiro.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     if(($os['status'] ?? '')!=='atendimento' && ($os['status'] ?? '')!=='refugado'){
       flash_set('danger','A venda já foi enviada para o financeiro.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
         // Regras obrigatórias para enviar ao Financeiro
     if(!has_kind($files,'arte_pdf')){
       flash_set('danger','Para gerar a venda, anexe a ARTE (PDF) antes.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     if(!has_kind($files,'entrada_comprovante') && !has_kind($files,'comprovante')){
       flash_set('danger','Para gerar a venda, anexe o COMPROVANTE da ENTRADA antes.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     // Verifica se cliente aprovou (via sistema online)
     $approval_check = $pdo->prepare("SELECT * FROM os_approval_tokens WHERE os_id=? AND approved=1 LIMIT 1");
     $approval_check->execute([$id]);
     if(!$approval_check->fetch()){
       flash_set('danger','Para gerar a venda, o cliente precisa aprovar a arte. Envie o link de aprovação primeiro.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
 $pdo->beginTransaction();
@@ -312,20 +312,20 @@ $pdo->beginTransaction();
 
     audit($pdo,'create_sale','os',$id,['from'=>$os['status'],'to'=>'conferencia','auto_purchases_created'=>true]);
     flash_set('success','Venda enviada para o Financeiro e compras automáticas geradas!');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Atualizar status
   if($action==='update_status'){
     $new = $_POST['new_status'] ?? $_POST['status'] ?? '';
     $allowed = ['atendimento','conferencia','producao','disponivel','finalizada','cancelada','refugado'];
-    if(!in_array($new,$allowed,true)){ flash_set('danger','Status inválido'); redirect($base.'/app.php?page=os_view&id='.$id); }
+    if(!in_array($new,$allowed,true)){ flash_set('danger','Status inválido'); redirect($base.'/app.php?page=os_view&id='.$id); exit; }
 
     // regras
     $arte_ok = has_arte($files);
     if($new==='producao' && !$arte_ok){
       flash_set('danger','Para ir para PRODUÇÃO, é obrigatório anexar a ARTE (PDF).');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     // Verifica aprovação do cliente para produção
     if($new==='producao'){
@@ -333,20 +333,20 @@ $pdo->beginTransaction();
       $approval_check->execute([$id]);
       if(!$approval_check->fetch()){
         flash_set('danger','Para ir para PRODUÇÃO, o cliente precisa aprovar a arte primeiro.');
-        redirect($base.'/app.php?page=os_view&id='.$id);
+        redirect($base.'/app.php?page=os_view&id='.$id); exit;
       }
     }
 
     // cancelamento: somente admin (outros solicitam em etapa futura)
     if($new==='cancelada' && !can_admin()){
       flash_set('danger','Somente o ADMIN pode cancelar. Use "Solicitar cancelamento" (próxima etapa).');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
     // Regra: O.S FINALIZADA não volta (somente com MASTER)
     if(($os['status'] ?? '')==='finalizada' && !can_admin()){
       flash_set('danger','O.S finalizada não pode ser alterada. Solicite abertura/cancelamento ao MASTER.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
     // Quem pode mudar o quê (fluxo):
@@ -366,7 +366,7 @@ $pdo->beginTransaction();
     $pdo->prepare("UPDATE os SET status=? WHERE id=?")->execute([$new,$id]);
     audit($pdo,'status','os',$id,['from'=>$os['status'],'to'=>$new]);
     flash_set('success','Status atualizado.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Solicitar reabertura/cancelamento ao MASTER (admin)
@@ -375,7 +375,7 @@ $pdo->beginTransaction();
     $reqType = $_POST['req_type'] ?? '';
     if(!in_array($reqType,['reabrir','cancelar'],true)){
       flash_set('danger','Tipo de solicitação inválido.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     $reason = trim($_POST['reason'] ?? '');
     if($reason==='') $reason = '(sem descrição)';
@@ -384,13 +384,13 @@ $pdo->beginTransaction();
     $stChk->execute([$id]);
     if((int)$stChk->fetch()['c']>0){
       flash_set('warning','Já existe uma solicitação pendente para esta O.S.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     $pdo->prepare("INSERT INTO os_master_requests (os_id,req_type,reason,status,requested_by_user_id,created_at) VALUES (?,?,?,'pendente',?,NOW())")
         ->execute([$id,$reqType,$reason,user_id()]);
     audit($pdo,'request_master','os',$id,['type'=>$reqType]);
     flash_set('success','Solicitação enviada ao MASTER.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Limpar arquivos ausentes do banco (admin only)
@@ -412,7 +412,7 @@ $pdo->beginTransaction();
     }
     
     flash_set('success', "Limpeza concluída: $deleted_count arquivo(s) fantasma(s) removido(s) do banco.");
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
   // Baixa de título a receber (exige comprovante)
@@ -424,13 +424,13 @@ $pdo->beginTransaction();
 
     if(!$ar_id || !$account_id){
       flash_set('danger','Informe a conta/caixa.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
     // comprovante obrigatório
     if(empty($_FILES['file']['name'])){
       flash_set('danger','Comprovante é obrigatório para dar baixa.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
 
     // upload comprovante
@@ -446,7 +446,7 @@ $pdo->beginTransaction();
     $dest = $uploadDir.'/'.$fname;
     if(!move_uploaded_file($tmp,$dest)){
       flash_set('danger','Falha ao enviar comprovante.');
-      redirect($base.'/app.php?page=os_view&id='.$id);
+      redirect($base.'/app.php?page=os_view&id='.$id); exit;
     }
     $rel = 'uploads/os_'.$id.'/'.$fname;
 
@@ -469,7 +469,7 @@ $pdo->beginTransaction();
 
     // se todos recebidos, libera finalização (não finaliza automático)
     flash_set('success','Recebimento baixado com comprovante.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
 
 }
@@ -533,13 +533,13 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'request_reopen'){
   // Verifica permissões (qualquer usuário logado pode solicitar, exceto se não tiver permissão de vendas)
   if(!can_sales()){
     flash_set('danger','Você não tem permissão para solicitar reabertura de O.S.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   $reason = trim($_POST['reason'] ?? '');
   if(empty($reason)){
     flash_set('danger','Informe o motivo da reabertura.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   // Cria solicitação
@@ -548,7 +548,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'request_reopen'){
   
   audit($pdo,'os','request_reopen',$id,['reason'=>$reason]);
   flash_set('success','Solicitação de reabertura enviada para aprovação do Master!');
-  redirect($base.'/app.php?page=os_view&id='.$id);
+  redirect($base.'/app.php?page=os_view&id='.$id); exit;
 }
 
 // POST: Solicitar exclusão
@@ -556,13 +556,13 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'request_delete'){
   // Verifica permissões
   if(!can_sales() && !can_admin()){
     flash_set('danger','Você não tem permissão para solicitar exclusão de O.S.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   $reason = trim($_POST['reason'] ?? '');
   if(empty($reason)){
     flash_set('danger','Informe o motivo da exclusão.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   // Cria solicitação
@@ -571,7 +571,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'request_delete'){
   
   audit($pdo,'os','request_delete',$id,['reason'=>$reason]);
   flash_set('success','Solicitação de exclusão enviada para aprovação do Master!');
-  redirect($base.'/app.php?page=os_view&id='.$id);
+  redirect($base.'/app.php?page=os_view&id='.$id); exit;
 }
 
 // POST: Master pode excluir diretamente
@@ -581,7 +581,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'delete_direct'){
   $reason = trim($_POST['reason'] ?? '');
   if(empty($reason)){
     flash_set('danger','Informe o motivo da exclusão.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   $pdo->beginTransaction();
@@ -623,14 +623,14 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'delete_direct'){
   
   audit($pdo,'os','delete_direct',$id,['reason'=>$reason]);
   flash_set('success','O.S #'.$os['code'].' foi excluída com sucesso!');
-  redirect($base.'/app.php?page=os');
+  redirect($base.'/app.php?page=os'); exit;
 }
 
 // POST: Aprovar pedido pendente
 if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'aprovar_pedido'){
   if($os['status'] !== 'pedido_pendente'){
     flash_set('danger','Este pedido não está pendente.');
-    redirect($base.'/app.php?page=os_view&id='.$id);
+    redirect($base.'/app.php?page=os_view&id='.$id); exit;
   }
   
   $novo_status = trim($_POST['novo_status'] ?? 'atendimento');
@@ -653,7 +653,7 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($action ?? '') === 'aprovar_pedido'){
   } else {
     flash_set('success','Pedido aprovado com sucesso! Status alterado para: '.strtoupper($novo_status));
   }
-  redirect($base.'/app.php?page=os_view&id='.$id);
+  redirect($base.'/app.php?page=os_view&id='.$id); exit;
 }
 ?>
 
