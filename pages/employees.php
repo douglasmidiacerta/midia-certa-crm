@@ -577,4 +577,18 @@ if(sw && loginEmail && passInp){
   sync();
 }
 
+// Scroll automático para o formulário ao editar
+<?php if($editing): ?>
+window.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('.card.p-3');
+  if(form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    form.style.border = '2px solid #059669';
+    setTimeout(() => {
+      form.style.border = '';
+    }, 2000);
+  }
+});
+<?php endif; ?>
+
 </script>
